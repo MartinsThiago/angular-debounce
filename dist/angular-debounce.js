@@ -3,13 +3,14 @@ angular.module('rt.debounce', []).factory('debounce', [
   function ($timeout) {
     return function (wait, fn, no_postpone) {
       var args, context, result, timeout;
-      var executed = true;
+      var executed = false;
+
       // Execute the callback function
       function ping() {
         result = fn.apply(context || this, args || []);
         context = args = null;
-        executed = true;
       }
+
       // Cancel the timeout (for rescheduling afterwards).
       function cancel() {
         if (timeout) {
@@ -17,20 +18,26 @@ angular.module('rt.debounce', []).factory('debounce', [
           timeout = null;
         }
       }
+
       // This is the actual result of the debounce call. It is a
       // wrapper function which you can invoke multiple times and
       // which will only be called once every "wait" milliseconds.
       function wrapper() {
         context = this;
         args = arguments;
+
+        if (no_postpone && !executed) {
+          executed = true;
+          ping();
+          $timeout(_ => executed = false, wait);
+        }
+
         if (!no_postpone) {
           cancel();
           timeout = $timeout(ping, wait);
-        } else if (executed) {
-          executed = false;
-          timeout = $timeout(ping, wait);
         }
       }
+
       // Forces the execution of pending calls
       function flushPending() {
         var pending = !!context;
@@ -41,6 +48,7 @@ angular.module('rt.debounce', []).factory('debounce', [
         }
         return pending;
       }
+
       // The wrapper also has a flush method, which you can use to
       // force the execution of the last scheduled call to happen
       // immediately (if any). It will also return the result of that
@@ -53,11 +61,13 @@ angular.module('rt.debounce', []).factory('debounce', [
         }
         return result;
       };
+
       // Flushes pending calls if any
       wrapper.flushPending = function () {
         flushPending();
         return result;
       };
+
       // Cancels the queued execution if any
       wrapper.cancel = cancel;
       return wrapper;
