@@ -29,7 +29,9 @@ angular.module('rt.debounce', []).factory('debounce', [
         if (no_postpone && !executed) {
           executed = true;
           ping();
-          $timeout(_ => executed = false, wait);
+          $timeout(function() {
+            executed = false
+          }, wait);
         }
 
         if (!no_postpone) {
